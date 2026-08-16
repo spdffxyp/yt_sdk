@@ -29,7 +29,7 @@ extern "C" {
 
 #define IS_MCAST_ADDR(pAddr)    (((pAddr[0] & 0x01) != 0) ? TRUE : FALSE)
 
-extern double yt_util_log(double x);
+extern int yt_util_log(int x);
 
 
 #ifdef __cplusplus

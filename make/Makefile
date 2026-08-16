@@ -17,4 +17,4 @@ EXTRA_CFLAGS += $(SDK_INCLUDES)
 EXTRA_CFLAGS += $(SDK_COMPILATION_SWITCHES) 
 
 # objects
-obj-y := $(SDK_SOURCE_OBJECTS)
+obj-y := $(SDK_SOURCE_OBJECTS) ../yt_smi_mib_rw.o

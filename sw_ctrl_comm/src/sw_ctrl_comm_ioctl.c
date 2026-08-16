@@ -16,6 +16,8 @@
 #include "../include/sw_ctrl_comm_smi.h"
 #include "../include/share/sw_ctrl_comm_share.h"
 
+extern int yt_init(void);
+
 typedef struct cmd_dev_s {
     struct cdev cdev;
     dev_t devno;
@@ -131,6 +133,8 @@ int32_t __init switch_ctrl_cdev_init(void)
     switch_ctrl_smi_init();
     pr_info("%s %d switch control cdev init OK\n", __func__, __LINE__);
 
+    printk(KERN_INFO "[Motorcomm] Triggering automatic Switch SDK initialization (yt_init)...\n");
+    yt_init();
     return 0;
 
 device_err:

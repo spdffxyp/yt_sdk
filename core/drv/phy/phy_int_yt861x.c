@@ -898,24 +898,28 @@ yt_ret_t int_yt861x_utp_snr_get(yt_unit_t unit, uint8_t phy_addr, yt_port_speed_
 
     if (mse0 != 0)
     {
-        pSnrVal->snr[0] = (uint16_t)(10*yt_util_log((double)(divisor/(mse0/100))));
+        int val0 = mse0 / 100;
+        pSnrVal->snr[0] = (uint16_t)(10 * yt_util_log(divisor / (val0 ? val0 : 1)));
     }
 
     if (speed == PORT_SPEED_1000M)
     {
         if (mse1 != 0)
         {
-            pSnrVal->snr[1] = (uint16_t)(10*yt_util_log((double)(divisor/(mse1/100))));
+            int val1 = mse1 / 100;
+            pSnrVal->snr[1] = (uint16_t)(10 * yt_util_log(divisor / (val1 ? val1 : 1)));
         }
 
         if (mse2 != 0)
         {
-            pSnrVal->snr[2] = (uint16_t)(10*yt_util_log((double)(divisor/(mse2/100))));
+            int val2 = mse2 / 100;
+            pSnrVal->snr[2] = (uint16_t)(10 * yt_util_log(divisor / (val2 ? val2 : 1)));
         }
 
         if (mse3 != 0)
         {
-            pSnrVal->snr[3] = (uint16_t)(10*yt_util_log((double)(divisor/(mse3/100))));
+            int val3 = mse3 / 100;
+            pSnrVal->snr[3] = (uint16_t)(10 * yt_util_log(divisor / (val3 ? val3 : 1)));
         }
     }
 

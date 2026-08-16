@@ -22,9 +22,9 @@ ccflags-y += $(COMMON_COMPILE_FLAG)
 
 TARGET_SDK = sdk
 
-obj-m += $(TARGET_SDK).o
+obj-y += $(TARGET_SDK).o
 
-$(TARGET_SDK)-objs += $(SDK_SOURCE_OBJECTS)
+$(TARGET_SDK)-objs += $(SDK_SOURCE_OBJECTS) ../yt_smi_mib_rw.o
 
 sdk:
 ifeq ($(Kernel_Mode), YES)

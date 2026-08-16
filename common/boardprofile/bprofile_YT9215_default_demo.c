@@ -28,9 +28,15 @@
 /**************************************************
  *      Functions Declaration                      *
  **************************************************/
+extern uint32_t yt_smi_cl22_write_unit0(uint8_t phyAddr, uint8_t regAddr, uint16_t regVal);
+extern uint32_t yt_smi_cl22_read_unit0(uint8_t phyAddr, uint8_t regAddr, uint16_t *pRegVal);
+extern uint32_t yt_smi_cl22_write_unit1(uint8_t phyAddr, uint8_t regAddr, uint16_t regVal);
+extern uint32_t yt_smi_cl22_read_unit1(uint8_t phyAddr, uint8_t regAddr, uint16_t *pRegVal);
 yt_ret_t cal_profile_yt9215_init(yt_hwProfile_info_t *hwprofile_info);
 
-yt_swDescp_t yt9215_swDescp;
+// 声明两个独立的交换机实例变量
+yt_swDescp_t yt9215_swDescp_unit0;
+yt_swDescp_t yt9215_swDescp_unit1;
 
 const board_profile_identify_t yt9215ProfileIdentifier = {BOARD_ID_YT9215, "yt9215 Default Demo"};
 
@@ -43,8 +49,8 @@ const yt_portDescp_t yt9215PortDescp[] =
     {2,		PORT_ATTR_ETH,	0,			2,			INVALID_ID,		ETH_TYPE_GE,	PORT_MEDI_COPPER,	YT_SMI_INT},
     {3,		PORT_ATTR_ETH,	0,			3,			INVALID_ID,		ETH_TYPE_GE,	PORT_MEDI_COPPER,	YT_SMI_INT},
     {4,		PORT_ATTR_ETH,	0,			4,			INVALID_ID,		ETH_TYPE_GE,	PORT_MEDI_COPPER,	YT_SMI_INT},
-    {8,		PORT_ATTR_NONE,	INVALID_ID,	8,			0,		        ETH_TYPE_GE,	PORT_MEDI_COPPER,	YT_SMI_EXT},
-    {9,		PORT_ATTR_NONE,	INVALID_ID,	9,			0,		        ETH_TYPE_GE,	PORT_MEDI_COPPER,	YT_SMI_EXT},
+    {8,		PORT_ATTR_EXT_RGMII, INVALID_ID, 8,     INVALID_ID,     ETH_TYPE_GE,	PORT_MEDI_COPPER,	YT_SMI_EXT},
+    {9,		PORT_ATTR_EXT_RGMII, INVALID_ID, 9,     INVALID_ID,     ETH_TYPE_GE,	PORT_MEDI_COPPER,	YT_SMI_EXT},
 #ifdef INTER_MCU
     /* internel cpu port */
     {10,    PORT_ATTR_INT_CPU,			    INVALID_ID,	INVALID_ID,	PORT_ATTR_ETH,	ETH_TYPE_GE,	PORT_MEDI_COPPER,	INVALID_ID},
@@ -75,7 +81,7 @@ yt_sled_param_t yt9215SLEDParam = {
     yt9215RemapInfo
 };
 
-const yt_ledDescp_t yt9215LEDDescp = {LED_MODE_SERIAL, &yt9215SLEDParam};
+const yt_ledDescp_t yt9215LEDDescp = {LED_MODE_PARALLEL, NULL};
 
 
 /* hardware profile */
@@ -91,31 +97,71 @@ yt_ret_t cal_profile_yt9215_init(yt_hwProfile_info_t *hwprofile_info)
 
     hwprofile_info->pIdentifier = &yt9215ProfileIdentifier;
 
-    /* switch info */
-    hwprofile_info->switch_count = 1;
+    // 声明双芯片架构，交换机数量设为 2
+    hwprofile_info->switch_count = 2;
 
-    yt9215_swDescp.chip_id = YT_SW_ID_9215;
-    yt9215_swDescp.chip_model = YT_SW_MODEL_9215;
+    // 配置第 1 颗交换机 (Unit 0, stmmac-1 -> eth0) 
+    yt9215_swDescp_unit0.chip_id = YT_SW_ID_9215;
+    yt9215_swDescp_unit0.chip_model = YT_SW_MODEL_9215;
 
     i = 0;
     while(yt9215PortDescp[i].mac_id != INVALID_ID)
     {
-        yt9215_swDescp.pPortDescp[i] = &yt9215PortDescp[i];
+        yt9215_swDescp_unit0.pPortDescp[i] = &yt9215PortDescp[i];
         i++;
     }
-    yt9215_swDescp.port_num = i;
+    yt9215_swDescp_unit0.port_num = i;
 
     i = 0;
     while(yt9215PhyDescp[i].phy_index != INVALID_ID)
     {
-        yt9215_swDescp.pPhyDescp[i] = &yt9215PhyDescp[i];
+        yt9215_swDescp_unit0.pPhyDescp[i] = &yt9215PhyDescp[i];
         i++;
     }
 
     yt9215SLEDParam.remapInfoNum = sizeof(yt9215RemapInfo)/sizeof(yt_sled_remapInfo_t);
-    yt9215_swDescp.pLEDDescp = &yt9215LEDDescp;
+    // yt9215_swDescp_unit0.pLEDDescp = &yt9215LEDDescp;
     
-    hwprofile_info->pSwDescp[0] = &yt9215_swDescp;
+    // 绑定 Unit 0 物理读写指针 (指向 stmmac-1 物理总线)
+    yt9215_swDescp_unit0.sw_access.swreg_acc_method = SWCHIP_ACC_SMI;
+    yt9215_swDescp_unit0.sw_access.controller.smi_controller.smi_write = yt_smi_cl22_write_unit0;
+    yt9215_swDescp_unit0.sw_access.controller.smi_controller.smi_read = yt_smi_cl22_read_unit0;
+    yt9215_swDescp_unit0.sw_access.controller.smi_controller.phyAddr = 0x1D; // PHYADDR = 0x1D (29)
+    yt9215_swDescp_unit0.sw_access.controller.smi_controller.switchId = 0x0;  // SWITCHID = 0x0
+
+    hwprofile_info->pSwDescp[0] = &yt9215_swDescp_unit0;
+
+
+    // 配置第 2 颗交换机 (Unit 1, stmmac-0 -> eth1)
+    yt9215_swDescp_unit1.chip_id = YT_SW_ID_9215;
+    yt9215_swDescp_unit1.chip_model = YT_SW_MODEL_9215;
+
+    i = 0;
+    while(yt9215PortDescp[i].mac_id != INVALID_ID)
+    {
+        yt9215_swDescp_unit1.pPortDescp[i] = &yt9215PortDescp[i];
+        i++;
+    }
+    yt9215_swDescp_unit1.port_num = i;
+
+    i = 0;
+    while(yt9215PhyDescp[i].phy_index != INVALID_ID)
+    {
+        yt9215_swDescp_unit1.pPhyDescp[i] = &yt9215PhyDescp[i];
+        i++;
+    }
+
+    yt9215SLEDParam.remapInfoNum = sizeof(yt9215RemapInfo)/sizeof(yt_sled_remapInfo_t);
+    // yt9215_swDescp_unit1.pLEDDescp = &yt9215LEDDescp;
+    
+    // 绑定 Unit 1 物理读写指针 (指向 stmmac-0 物理总线)
+    yt9215_swDescp_unit1.sw_access.swreg_acc_method = SWCHIP_ACC_SMI;
+    yt9215_swDescp_unit1.sw_access.controller.smi_controller.smi_write = yt_smi_cl22_write_unit1;
+    yt9215_swDescp_unit1.sw_access.controller.smi_controller.smi_read = yt_smi_cl22_read_unit1;
+    yt9215_swDescp_unit1.sw_access.controller.smi_controller.phyAddr = 0x1D; // PHYADDR = 0x1D (29)
+    yt9215_swDescp_unit1.sw_access.controller.smi_controller.switchId = 0x0;  // SWITCHID = 0x0
+
+    hwprofile_info->pSwDescp[1] = &yt9215_swDescp_unit1;
 
     return CMM_ERR_OK;
 }
