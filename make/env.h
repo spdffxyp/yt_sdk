@@ -37,6 +37,8 @@ export Board_YT9215_Default_Demo=YES
 # Supported phy list
 #
 # PHY_YT8531 is not set
+# end of Supported phy list
+
 export SDK_MODEL_FULL=YES
 # SDK_MODEL_CUST is not set
 export YT_SDK_VERSION=
