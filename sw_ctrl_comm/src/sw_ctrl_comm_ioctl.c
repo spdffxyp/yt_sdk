@@ -158,4 +158,6 @@ void __exit switch_ctrl_cdev_exit(void)
 module_init(switch_ctrl_cdev_init);
 module_exit(switch_ctrl_cdev_exit);
 
+MODULE_ALIAS("of:N*T*Cmotorcomm,yt9215*");
+
 MODULE_LICENSE("GPL");

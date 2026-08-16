@@ -29,4 +29,7 @@ int yt_util_log(int x)
     return res;
 }
 
+MODULE_ALIAS("of:N*T*Cmotorcomm,yt9215*");
+MODULE_LICENSE("GPL");
+
 #endif //_YT_UTIL_C
