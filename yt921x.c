@@ -42,6 +42,7 @@
 #define YT921X_XMIIn(port)		(0x80400 + 8 * ((port) - 8))
 #endif
 
+/* 1. 模式选择：Bit 31:29 = 4 (RGMII 模式) */
 #ifndef YT921X_XMII_MODE_M
 #define YT921X_XMII_MODE_M		GENMASK(31, 29)
 #endif
@@ -54,36 +55,42 @@
 #define YT921X_XMII_MODE_RGMII		YT921X_XMII_MODE(4)
 #endif
 
-#ifndef YT921X_XMII_LINK
-#define YT921X_XMII_LINK		BIT(16)
+/* 2. 官方标准控制位定义 */
+#ifndef YT921X_XMII_EN_MACMODE_LNKDN_SWH
+#define YT921X_XMII_EN_MACMODE_LNKDN_SWH	BIT(26) /* Bit 26: MAC Mode Switch */
 #endif
 
-#ifndef YT921X_XMII_DUPLEX_FULL
-#define YT921X_XMII_DUPLEX_FULL		BIT(15)
+#ifndef YT921X_XMII_RGMII_TXC_DLY100_10_EN
+#define YT921X_XMII_RGMII_TXC_DLY100_10_EN	BIT(20) /* Bit 20: 10/100M Delay Enable */
 #endif
 
-#ifndef YT921X_XMII_SPEED_M
-#define YT921X_XMII_SPEED_M		GENMASK(14, 12)
+#ifndef YT921X_XMII_LINK_UP
+#define YT921X_XMII_LINK_UP		BIT(19) /* Bit 19: 强制 Link UP (对应官方 LINK_UPf) */
 #endif
 
-#ifndef YT921X_XMII_SPEED
-#define YT921X_XMII_SPEED(x)		FIELD_PREP(YT921X_XMII_SPEED_M, (x))
+#ifndef YT921X_XMII_PORT_EN
+#define YT921X_XMII_PORT_EN		BIT(18) /* Bit 18: 端口使能 (对应官方 PORT_ENf) */
 #endif
 
-#ifndef YT921X_XMII_SPEED_1000
-#define YT921X_XMII_SPEED_1000		YT921X_XMII_SPEED(2)
+/* 3. 官方 RGMII 时延（Delay）位域定义 */
+#ifndef YT921X_XMII_RGMII_TX_DELAY_SEL_M
+#define YT921X_XMII_RGMII_TX_DELAY_SEL_M	GENMASK(16, 13) /* Bit 16:13: Tx Delay 档位 */
 #endif
 
-#ifndef YT921X_XMII_RGMII_TX_DELAY_2NS
-#define YT921X_XMII_RGMII_TX_DELAY_2NS	BIT(11)
+#ifndef YT921X_XMII_RGMII_TX_DELAY_SEL
+#define YT921X_XMII_RGMII_TX_DELAY_SEL(x)	FIELD_PREP(YT921X_XMII_RGMII_TX_DELAY_SEL_M, (x))
 #endif
 
-#ifndef YT921X_XMII_RGMII_RX_DELAY_150PS_M
-#define YT921X_XMII_RGMII_RX_DELAY_150PS_M GENMASK(10, 7)
+#ifndef YT921X_XMII_RGMII_TX_DELAY_2NS_EN
+#define YT921X_XMII_RGMII_TX_DELAY_2NS_EN	BIT(8)          /* Bit 8: Tx 2ns 基础延时开关 */
 #endif
 
-#ifndef YT921X_XMII_RGMII_RX_DELAY_150PS
-#define YT921X_XMII_RGMII_RX_DELAY_150PS(x) FIELD_PREP(YT921X_XMII_RGMII_RX_DELAY_150PS_M, (x))
+#ifndef YT921X_XMII_RGMII_RX_DELAY_SEL_M
+#define YT921X_XMII_RGMII_RX_DELAY_SEL_M	GENMASK(6, 3)   /* Bit 6:3: Rx Delay 档位 */
+#endif
+
+#ifndef YT921X_XMII_RGMII_RX_DELAY_SEL
+#define YT921X_XMII_RGMII_RX_DELAY_SEL(x)	FIELD_PREP(YT921X_XMII_RGMII_RX_DELAY_SEL_M, (x))
 #endif
 
 struct yt921x_mib_desc {
@@ -2786,25 +2793,37 @@ yt921x_port_config(struct yt921x_priv *priv, int port, unsigned int mode,
 		if (res)
 			return res;
 
-		/* 在硬件寄存器中将模式配置为 RGMII 并强制使能链路 */
-		mask = YT921X_XMII_MODE_M | YT921X_XMII_LINK | YT921X_XMII_EN;
-		ctrl = YT921X_XMII_MODE_RGMII | YT921X_XMII_LINK | YT921X_XMII_EN;
+		/* 构造 RGMII 掩码（覆盖模式位、控制位以及时延位） */
+		mask = YT921X_XMII_MODE_M |
+		       YT921X_XMII_EN_MACMODE_LNKDN_SWH |
+		       YT921X_XMII_RGMII_TXC_DLY100_10_EN |
+		       YT921X_XMII_LINK_UP |
+		       YT921X_XMII_PORT_EN |
+		       YT921X_XMII_RGMII_TX_DELAY_SEL_M |
+		       YT921X_XMII_RGMII_TX_DELAY_2NS_EN |
+		       YT921X_XMII_RGMII_RX_DELAY_SEL_M;
+		/* 基础配置: 0x841C0000 (Mode=RGMII, Port Enable, Link UP) */
+		ctrl = YT921X_XMII_MODE_RGMII |
+                 YT921X_XMII_EN_MACMODE_LNKDN_SWH |
+                 YT921X_XMII_RGMII_TXC_DLY100_10_EN |
+                 YT921X_XMII_LINK_UP |
+                 YT921X_XMII_PORT_EN;
 
 		/* 根据设备树模式，控制交换机芯片内部是否进行 2ns 的时钟相位延时 */
 		if (interface == PHY_INTERFACE_MODE_RGMII_TXID ||
 		    interface == PHY_INTERFACE_MODE_RGMII_ID) {
-			mask |= YT921X_XMII_RGMII_TX_DELAY_2NS;
-			ctrl |= YT921X_XMII_RGMII_TX_DELAY_2NS;
+			ctrl |= YT921X_XMII_RGMII_TX_DELAY_2NS_EN |
+			        YT921X_XMII_RGMII_TX_DELAY_SEL(2);
 		}
 		if (interface == PHY_INTERFACE_MODE_RGMII_RXID ||
 		    interface == PHY_INTERFACE_MODE_RGMII_ID) {
 			/* 裕太微 RGMII 接收时延使用 150ps 步进寄存器控制。
 			 * 13 * 150ps = 1.95ns (约为标准的 2ns 延迟)
 			 */
-			mask |= YT921X_XMII_RGMII_RX_DELAY_150PS_M;
-			ctrl |= YT921X_XMII_RGMII_RX_DELAY_150PS(13);
+			ctrl |= YT921X_XMII_RGMII_RX_DELAY_SEL(13);
 		}
 
+		/* 写入 0x80400 (Port 8) 或 0x80408 (Port 9) */
 		res = yt921x_reg_update_bits(priv, YT921X_XMIIn(port), mask, ctrl);
 		if (res)
 			return res;
@@ -3005,10 +3024,12 @@ static int yt921x_dsa_port_setup(struct dsa_switch *ds, int port)
 		if (dp && dp->conduit) {
 			dev = dp->conduit;
 			netdev_features_t csum_mask = NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM | 
-										NETIF_F_CSUM_MASK | NETIF_F_ALL_TSO;
+									NETIF_F_CSUM_MASK | NETIF_F_ALL_TSO |
+									NETIF_F_GRO;
 
 			pr_info("yt921x: defaulting TX checksum and TSO to OFF on conduit: %s\n", dev->name);
 
+			rtnl_lock();
 			/* 确保 hw_features 包含这些位（允许用户通过 ethtool 手动开启） */
 			dev->hw_features     |= csum_mask;
 
@@ -3018,6 +3039,7 @@ static int yt921x_dsa_port_setup(struct dsa_switch *ds, int port)
 
 			/* 通知内核刷新网络特性 */
 			netdev_update_features(dev);
+			rtnl_unlock();
 		}
 	}
     return 0;
@@ -3308,16 +3330,6 @@ static int yt921x_chip_setup_dsa(struct yt921x_priv *priv)
 			if (res)
 				return res;
 
-			/* 强制配置为 RGMII 模式并使能链路 (根据设备树设置为纯 RGMII 模式) */
-			res = yt921x_reg_write(priv, YT921X_XMIIn(port),
-					       YT921X_XMII_MODE_RGMII | 
-					       YT921X_XMII_SPEED_1000 | 
-					       YT921X_XMII_DUPLEX_FULL | 
-					       YT921X_XMII_LINK | 
-					       YT921X_XMII_EN);
-			if (res)
-				return res;
-				
 			dev_info(dev, "Successfully forced active RGMII clock on CPU Port %d\n", port);
 		}
 	}
