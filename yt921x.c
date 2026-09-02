@@ -7,7 +7,22 @@
  *
  * Copyright (c) 2025 David Yang
  */
-
+/* 0x841C4108 = 0b 1000 0100 0001 1100 0100 0001 0000 1000
+                   │ ││  │      │ ││││   ││   ││ ││   ││ │
+                   │ ││  │      │ ││││   ││   ││ ││   │└─┴───── [Bit 2:0]   [Bit 2:0]   RMII/REMII 时钟配置           = 0 (未配置)
+                   │ ││  │      │ ││││   ││   ││ │└───┴──────── [Bit 6:3]   EXTIF0_MODE_RGMII_RXC_DELAY_SELf = 1 (1<<3 = 0x00000008)
+                   │ ││  │      │ ││││   ││   ││ └───────────── [Bit 7]     EXTIF0_MODE_RGMII_TXC_OUT_SELf   = 0
+                   │ ││  │      │ ││││   ││   │└─────────────── [Bit 8]     EXTIF0_MODE_RGMII_TXC_DELAY_ENf  = 1 (1<<8 = 0x00000100)
+                   │ ││  │      │ ││││   │└───┴──────────────── [Bit 12:9]  RMII/XMII 时钟输入/输出选择      = 0
+                   │ ││  │      │ │││└───┴───────────────────── [Bit 16:13] EXTIF0_MODE_RGMII_TXC_DELAY_SELf = 2 (2<<13 = 0x00004000)
+                   │ ││  │      │ ││└────────────────────────── [Bit 17]    EXTIF0_MODE_XMII_SOFT_RSTf       = 0 (不复位)
+                   │ ││  │      │ │└─────────────────────────── [Bit 18]    EXTIF0_MODE_XMII_PORT_ENf        = 1 (1<<18 = 0x00040000)
+                   │ ││  │      │ └──────────────────────────── [Bit 19]    EXTIF0_MODE_XMII_LINK_UPf        = 1 (1<<19 = 0x00080000)
+                   │ ││  │      └────────────────────────────── [Bit 20]    EXTIF0_MODE_RGMII_TXC_DLY100_10_ENf = 1 (1<<20 = 0x00100000)
+                   │ ││  └───────────────────────────────────── [Bit 26]    EXTIF0_MODE_EN_MACMODE_LNKDN_SWHf   = 1 (1<<26 = 0x04000000)
+                   │ │└──────────────────────────────────────── [Bit 28]    EXTIF0_MODE_RGMII_DELAY_TYPE_SELf   = 0
+                   └─┴───────────────────────────────────────── [Bit 31:29] EXTIF0_MODE_XMII_MODEf (RGMII=4) = 4 (4<<29 = 0x80000000)
+ */
 #include <linux/dcbnl.h>
 #include <linux/etherdevice.h>
 #include <linux/if_bridge.h>
@@ -3600,6 +3615,10 @@ static void yt921x_mdio_remove(struct mdio_device *mdiodev)
 	dsa_unregister_switch(&priv->ds);
 
 	mutex_destroy(&priv->reg_lock);
+
+	if (atomic_dec_and_test(&yt921x_instance_count)) {
+		smi_mib_proc_remove();
+	}
 }
 
 static int yt921x_mdio_probe(struct mdio_device *mdiodev)

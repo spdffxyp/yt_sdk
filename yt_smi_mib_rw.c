@@ -401,8 +401,29 @@ void smi_mib_proc_test(void)
         smi_out_buf = vmalloc(PROC_BUF_SIZE);
     if (!mib_out_buf)
         mib_out_buf = vmalloc(PROC_BUF_SIZE);
+    if (!smi_proc)
+        smi_proc = proc_create("smi", 0666, NULL, &smi_proc_fops); 
+    if (!mib_proc)
+        mib_proc = proc_create("mib", 0666, NULL, &mib_proc_fops); 
+}
 
-    smi_proc = proc_create("smi", 0666, NULL, &smi_proc_fops); 
-    mib_proc = proc_create("mib", 0666, NULL, &mib_proc_fops); 
+void smi_mib_proc_remove(void)
+{
+    if (smi_proc) {
+        remove_proc_entry("smi", NULL);
+        smi_proc = NULL;
+    }
+    if (mib_proc) {
+        remove_proc_entry("mib", NULL);
+        mib_proc = NULL;
+    }
+    if (smi_out_buf) {
+        vfree(smi_out_buf);
+        smi_out_buf = NULL;
+    }
+    if (mib_out_buf) {
+        vfree(mib_out_buf);
+        mib_out_buf = NULL;
+    }
 }
 #endif
