@@ -119,8 +119,12 @@ yt921x_tag_rcv(struct sk_buff *skb, struct net_device *netdev)
 	port = FIELD_GET(YT921X_TAG_RX_PORT_M, rx);
 	skb->dev = dsa_conduit_find_user(netdev, 0, port);
 	if (unlikely(!skb->dev)) {
-		dev_warn_ratelimited(&netdev->dev,
-				     "Couldn't decode source port %u\n", port);
+		//dev_warn_ratelimited(&netdev->dev,
+		//		     "Couldn't decode source port %u\n", port);
+		//dev_warn_ratelimited(&netdev->dev,
+		//		     "Couldn't decode source port %u | Raw Tag: 0x%04x 0x%04x 0x%04x 0x%04x | skb_len=%u proto=0x%04x\n",
+		//		     port, ntohs(tag[0]), ntohs(tag[1]), ntohs(tag[2]), ntohs(tag[3]),
+		//		     skb->len, ntohs(skb->protocol));
 		return NULL;
 	}
 
